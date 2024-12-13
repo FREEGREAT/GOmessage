@@ -1,2 +1,8 @@
 .env
+.http
+.txt
 configs/
+Makefile
+
+user/test-api.http-target-2__status-200__2024-24-13--22-12-59.txt
+user/test-api.http

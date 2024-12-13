@@ -2,66 +2,35 @@ package main
 
 import (
 	"context"
-	"fmt"
-	"log"
+	"net"
+	"net/http"
 	"os"
+	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/julienschmidt/httprouter"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"gomessage.com/users/internal/models"
+	handler "gomessage.com/users/internal/handlers"
 	"gomessage.com/users/internal/service"
-	repository "gomessage.com/users/internal/storage/postgresql"
+	repo "gomessage.com/users/internal/storage/postgresql"
 	"gomessage.com/users/pkg/postgresql"
 	"gomessage.com/users/pkg/utils"
 )
 
 const connectAttempts = 3
 
-/*
 func main() {
-	srv := new(server.Server)
+	logrus.Info("Initializing application")
+
 	if err := utils.InitConfig(); err != nil {
-		log.Fatalf("error init config: %s", err.Error())
-	}
-
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("error loading enb var: %s", err.Error())
-	}
-
-	postgresqlClient, err := postgresql.NewClient(context.TODO(), connectAttempts, postgresql.StorageConfig{
-		Host:     viper.GetString("db.host"),
-		Port:     viper.GetString("db.port"),
-		Username: viper.GetString("db.username"),
-		Password: os.Getenv("DB_PASSWORD"),
-		Database: viper.GetString("db.dbname"),
-		SSLMode:  viper.GetString("db.sslmode"),
-	})
-
-	if err != nil {
-		log.Fatalf("Failed to init db: %s", err.Error())
-	}
-	repository := repository.NewRepository(postgresqlClient)
-	all, err := repository.FindAll(context.TODO())
-	if err != nil {
-		return
-	}
-
-	for _, usr := range all {
-		fmt.Printf("%v", usr)
-	}
-	if err := srv.Run("8081"); err != nil {
-		log.Fatalf("error occure while running http server: %s", err.Error())
-	}
-}*/
-
-func main() {
-	if err := utils.InitConfig(); err != nil {
-		log.Fatalf("error init config: %s", err.Error())
+		logrus.Fatalf("error init config: %s", err.Error())
 	}
 	if err := godotenv.Load(); err != nil {
-		log.Fatalf("error loading enb var: %s", err.Error())
+		logrus.Fatalf("error loading enb var: %s", err.Error())
 	}
-	fmt.Println("11")
+	// Створення клієнта для PostgreSQL
+	logrus.Info("Connecting to database")
 	postgresqlClient, err := postgresql.NewClient(context.TODO(), connectAttempts, postgresql.StorageConfig{
 		Host:     viper.GetString("db.host"),
 		Port:     viper.GetString("db.port"),
@@ -71,34 +40,33 @@ func main() {
 		SSLMode:  viper.GetString("db.sslmode"),
 	})
 	if err != nil {
-		log.Fatalf("Failed to initialize database client: %s", err)
+		logrus.Fatalf("Failed to initialize database client: %s", err)
 	}
-	fmt.Println("22")
-	userRepo := repository.NewRepository(postgresqlClient)
+	// Створення репозиторію та сервісу
+	userRepo := repo.NewUserRepository(postgresqlClient)
 	userService := service.CreateNewUserService(userRepo)
 
-	// Використання сервісу для створення користувача
-	age := 25
-	img := "http://example.com/imagejpg"
-	newUser := &models.UserModel{
-		Nickname:     "JohnDoe",
-		PasswordHash: "hashed_password",
-		Email:        "johnddo333e@example.com",
-		Age:          &age,
-		ImageUrl:     &img,
-	}
+	// Налаштування роутера та хендлерів
+	router := httprouter.New()
+	logrus.Info("Registering handlers")
+	userHandler := handler.NewUserHandler(userService)
+	userHandler.Register(router)
 
-	if err := userService.CreateUser(context.TODO(), newUser); err != nil {
-		log.Fatalf("Failed to create user: %s", err)
-	}
+	// Запуск серверу
+	start(router)
+}
 
-	all, err := userService.GetAllUsers(context.TODO())
+func start(router *httprouter.Router) {
+	logrus.Info("Starting application")
+	listener, err := net.Listen("tcp", ":8080")
 	if err != nil {
-		return
+		panic(err)
 	}
-	for _, usr := range all {
-		fmt.Printf("%v", usr)
+	server := &http.Server{
+		Handler:      router,
+		WriteTimeout: 15 * time.Second,
+		ReadTimeout:  15 * time.Second,
 	}
-
-	log.Println("User created successfully")
+	logrus.Info("Server is listening on port :8080")
+	logrus.Fatalln(server.Serve(listener))
 }
