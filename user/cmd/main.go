@@ -7,10 +7,12 @@ import (
 	"os"
 	"time"
 
+	proto_media_service "github.com/FREEGREAT/protos/gen/go/media"
 	"github.com/joho/godotenv"
 	"github.com/julienschmidt/httprouter"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
+	"gomessage.com/users/internal/grpcclient"
 	handler "gomessage.com/users/internal/handlers"
 	"gomessage.com/users/internal/service"
 	repo "gomessage.com/users/internal/storage/postgresql"
@@ -42,18 +44,29 @@ func main() {
 	if err != nil {
 		logrus.Fatalf("Failed to initialize database client: %s", err)
 	}
-	// Створення репозиторію та сервісу
+
 	userRepo := repo.NewUserRepository(postgresqlClient)
 	userService := service.CreateNewUserService(userRepo)
 
-	// Налаштування роутера та хендлерів
 	router := httprouter.New()
 	logrus.Info("Registering handlers")
-	userHandler := handler.NewUserHandler(userService)
-	userHandler.Register(router)
 
-	// Запуск серверу
+	if err != nil {
+		logrus.Fatalf("Error while creating GRPCClient", err)
+	}
+
+	grpcClient, err := grpcclient.NewGRPCClient(viper.GetString("grpc.addr"), &userService)
+
+	if err != nil {
+		logrus.Fatalf("Failed to connect to gRPC server: %s. Host:%s ", err, viper.GetString("grpc.host")+viper.GetString("grpc.port"))
+	}
+	conn, err:=grpcclient.NewGRPCConn(viper.GetString("grpc.addr"))
+	client := proto_media_service.NewMediaServiceClient(conn)
+	
+	userHandler := handler.NewUserHandler(grpcClient,client )
+	userHandler.Register(router)
 	start(router)
+
 }
 
 func start(router *httprouter.Router) {
