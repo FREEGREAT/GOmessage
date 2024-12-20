@@ -35,6 +35,28 @@ func (f *friendsRepository) Create(ctx context.Context, friend *models.FriendLis
 	return nil
 }
 
+func (f *friendsRepository) FindAll(ctx context.Context, user_id string) ([]models.FriendListModel, error) {
+	q := `SELECT * FROM friend_list WHERE user_id=$1`
+	qrow, err := f.client.Query(ctx, q)
+	if err != nil {
+		return nil, err
+	}
+
+	friends := make([]models.FriendListModel, 0)
+	for qrow.Next() {
+		var frn models.FriendListModel
+		err := qrow.Scan(&frn.ID, &frn.UserID, &frn.FriendID)
+		if err != nil {
+			return nil, err
+		}
+		friends = append(friends, frn)
+	}
+	if err = qrow.Err(); err != nil {
+		return nil, err
+	}
+	return friends, nil
+}
+
 // Delete implements storage.FriendsRepository.
 func (f *friendsRepository) Delete(ctx context.Context, friends *models.FriendListModel) error {
 	query := `DELETE FROM friend_list WHERE user_id = $1 AND friend_id = $2`

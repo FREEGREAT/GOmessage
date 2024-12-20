@@ -3,7 +3,7 @@ module gomessage.com/media
 go 1.23.4
 
 require (
-	github.com/FREEGREAT/protos v0.0.0-20241218221353-e0c85498360a
+	github.com/FREEGREAT/protos v0.0.0-20241220205540-3f2ea0c43db4
 	github.com/joho/godotenv v1.5.1
 	github.com/minio/minio-go/v7 v7.0.82
 	github.com/sirupsen/logrus v1.9.3

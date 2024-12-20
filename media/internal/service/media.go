@@ -4,21 +4,25 @@ import (
 	"context"
 
 	media "github.com/FREEGREAT/protos/gen/go/media"
+	"github.com/sirupsen/logrus"
+	"gomessage.com/media/internal/storage"
 )
 
 type MediaService struct {
-		media.UnimplementedMediaServiceServer
+	repo storage.MediaRepository
+	media.UnimplementedMediaServiceServer
 }
 
-// Зміна конструктора
-func NewMediaService() *MediaService {
-	return &MediaService{}
+func NewMediaService(repo storage.MediaRepository) *MediaService {
+	return &MediaService{repo: repo}
 }
 
-// Зміна методу SavePhoto
 func (s *MediaService) SavePhoto(ctx context.Context, req *media.SavePhotoRequest) (*media.SavePhotoResponse, error) {
-	// Логіка для збереження фото
-	photoLink := "http://example.com/photo.jpg" // Згенероване посилання на фото
+	name := "test_img_grpc.jpg"
 
-	return &media.SavePhotoResponse{PhotoLink: photoLink}, nil
+	url, err := s.repo.UploadImgFile(name, req.Photo, "image/jpg")
+	if err != nil {
+		logrus.Errorf("Error while uploading image. %w", &err)
+	}
+	return &media.SavePhotoResponse{PhotoLink: url}, nil
 }

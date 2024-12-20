@@ -76,9 +76,13 @@ func (r *userRepository) FindAll(ctx context.Context) (u []models.UserModel, err
 }
 
 // FindOne implements user.UserRepository.
-func (r *userRepository) FindOne(ctx context.Context, id string) (models.UserModel, error) {
-	querry := `SELECT user_id, nickname, password_hash, email, age, image_url FROM users WHERE user_id = $1`
-	qrow := r.client.QueryRow(ctx, querry, id)
+func (r *userRepository) FindOne(ctx context.Context, user *models.UserModel) (models.UserModel, error) {
+	querry := `SELECT user_id, nickname, password_hash, email, age, image_url
+			FROM users
+				WHERE ($1 IS NOT NULL AND user_id = $1)
+   					OR ($1 IS NULL AND email = $2 AND password_hash = $3);`
+
+	qrow := r.client.QueryRow(ctx, querry, user.ID, user.Nickname, user.PasswordHash)
 	var usr models.UserModel
 	if err := qrow.Scan(&usr.ID, &usr.Nickname, &usr.PasswordHash, &usr.Email, &usr.Age, &usr.ImageUrl); err != nil {
 		return models.UserModel{}, err

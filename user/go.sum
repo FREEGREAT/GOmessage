@@ -3,6 +3,10 @@ github.com/FREEGREAT/protos v0.0.0-20241218204619-7997a163f1a9 h1:eZFqn/6CpO/bV2
 github.com/FREEGREAT/protos v0.0.0-20241218204619-7997a163f1a9/go.mod h1:omK/eEvfYU1cI1CC79e//R+fhhn0Mv8nmLYb8w8sBw0=
 github.com/FREEGREAT/protos v0.0.0-20241218221353-e0c85498360a h1:9IEEYoo8hR//di93v0lkxDk3/Wjs5AhclbakrT2Bl/k=
 github.com/FREEGREAT/protos v0.0.0-20241218221353-e0c85498360a/go.mod h1:omK/eEvfYU1cI1CC79e//R+fhhn0Mv8nmLYb8w8sBw0=
+github.com/FREEGREAT/protos v0.0.0-20241220205540-3f2ea0c43db4 h1:hHN1QtUFersYF9D4TihWYtpBoKj5CwSwyMs2XMGoZvs=
+github.com/FREEGREAT/protos v0.0.0-20241220205540-3f2ea0c43db4/go.mod h1:omK/eEvfYU1cI1CC79e//R+fhhn0Mv8nmLYb8w8sBw0=
+github.com/FREEGREAT/protos v0.0.0-20241220220316-257b9341eefe h1:nsDhASSK+an7jIITJ3AcGSZDdY5NqmzC7+i8Ue0iDYU=
+github.com/FREEGREAT/protos v0.0.0-20241220220316-257b9341eefe/go.mod h1:omK/eEvfYU1cI1CC79e//R+fhhn0Mv8nmLYb8w8sBw0=
 github.com/Masterminds/semver/v3 v3.1.1/go.mod h1:VPu/7SZ7ePZ3QOrcuXROw5FAcLl4a0cBrbBpGY/8hQs=
 github.com/cockroachdb/apd v1.1.0 h1:3LFP3629v+1aKXU5Q37mxmRxX/pIu1nijXydLShEq5I=
 github.com/cockroachdb/apd v1.1.0/go.mod h1:8Sl8LxpKi29FqWXR16WEFZRNSz3SoPzUzeMeY4+DwBQ=

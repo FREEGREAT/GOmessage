@@ -3,21 +3,17 @@ package main
 import (
 	"context"
 	"net"
-	"net/http"
 	"os"
-	"time"
 
-	proto_media_service "github.com/FREEGREAT/protos/gen/go/media"
+	proto_user_service "github.com/FREEGREAT/protos/gen/go/user"
 	"github.com/joho/godotenv"
-	"github.com/julienschmidt/httprouter"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"gomessage.com/users/internal/grpcclient"
-	handler "gomessage.com/users/internal/handlers"
 	"gomessage.com/users/internal/service"
 	repo "gomessage.com/users/internal/storage/postgresql"
 	"gomessage.com/users/pkg/postgresql"
 	"gomessage.com/users/pkg/utils"
+	"google.golang.org/grpc"
 )
 
 const connectAttempts = 3
@@ -45,41 +41,44 @@ func main() {
 		logrus.Fatalf("Failed to initialize database client: %s", err)
 	}
 
+	grpcServer := grpc.NewServer()
 	userRepo := repo.NewUserRepository(postgresqlClient)
 	userService := service.CreateNewUserService(userRepo)
 
-	router := httprouter.New()
-	logrus.Info("Registering handlers")
+	proto_user_service.RegisterUserServiceServer(grpcServer, userService)
+
+	lis, err := net.Listen("tcp", ":50051")
 
 	if err != nil {
-		logrus.Fatalf("Error while creating GRPCClient", err)
+
+		logrus.Fatalf("failed to listen: %v", err)
+
 	}
 
-	grpcClient, err := grpcclient.NewGRPCClient(viper.GetString("grpc.addr"), &userService)
+	logrus.Println("Media service is running on port 50051")
 
-	if err != nil {
-		logrus.Fatalf("Failed to connect to gRPC server: %s. Host:%s ", err, viper.GetString("grpc.host")+viper.GetString("grpc.port"))
-	}
-	conn, err:=grpcclient.NewGRPCConn(viper.GetString("grpc.addr"))
-	client := proto_media_service.NewMediaServiceClient(conn)
-	
-	userHandler := handler.NewUserHandler(grpcClient,client )
-	userHandler.Register(router)
-	start(router)
+	if err := grpcServer.Serve(lis); err != nil {
 
-}
+		logrus.Fatalf("failed to serve: %v", err)
 
-func start(router *httprouter.Router) {
-	logrus.Info("Starting application")
-	listener, err := net.Listen("tcp", ":8080")
-	if err != nil {
-		panic(err)
+		// router := httprouter.New()
+		// logrus.Info("Registering handlers")
+
+		// if err != nil {
+		// 	logrus.Fatalf("Error while creating GRPCClient", err)
+		// }
+
+		// grpcClient, err := grpcclient.NewGRPCClient(viper.GetString("grpc.addr"), &userService)
+
+		// if err != nil {
+		// 	logrus.Fatalf("Failed to connect to gRPC server: %s. Host:%s ", err, viper.GetString("grpc.host")+viper.GetString("grpc.port"))
+		// }
+		// conn, err:=grpcclient.NewGRPCConn(viper.GetString("grpc.addr"))
+		// client := proto_media_service.NewMediaServiceClient(conn)
+
+		// userHandler := handler.NewUserHandler(grpcClient,client )
+		// userHandler.Register(router)
+		// start(router)
+
 	}
-	server := &http.Server{
-		Handler:      router,
-		WriteTimeout: 15 * time.Second,
-		ReadTimeout:  15 * time.Second,
-	}
-	logrus.Info("Server is listening on port :8080")
-	logrus.Fatalln(server.Serve(listener))
 }

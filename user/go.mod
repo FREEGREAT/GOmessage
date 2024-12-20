@@ -14,7 +14,7 @@ require (
 )
 
 require (
-	github.com/FREEGREAT/protos v0.0.0-20241218221353-e0c85498360a // indirect
+	github.com/FREEGREAT/protos v0.0.0-20241220220316-257b9341eefe // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect

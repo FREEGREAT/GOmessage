@@ -1,5 +1,7 @@
 github.com/FREEGREAT/protos v0.0.0-20241218221353-e0c85498360a h1:9IEEYoo8hR//di93v0lkxDk3/Wjs5AhclbakrT2Bl/k=
 github.com/FREEGREAT/protos v0.0.0-20241218221353-e0c85498360a/go.mod h1:omK/eEvfYU1cI1CC79e//R+fhhn0Mv8nmLYb8w8sBw0=
+github.com/FREEGREAT/protos v0.0.0-20241220205540-3f2ea0c43db4 h1:hHN1QtUFersYF9D4TihWYtpBoKj5CwSwyMs2XMGoZvs=
+github.com/FREEGREAT/protos v0.0.0-20241220205540-3f2ea0c43db4/go.mod h1:omK/eEvfYU1cI1CC79e//R+fhhn0Mv8nmLYb8w8sBw0=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc h1:U9qPSI2PIWSS1VwoXQT9A3Wy9MM3WgvqSxFWenqJduM=
