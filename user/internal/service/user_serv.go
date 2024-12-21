@@ -16,7 +16,7 @@ type userService struct {
 	proto_user_service.UnimplementedUserServiceServer
 }
 
-// / NEED TO BE TESTED
+
 func (u *userService) GetUsers(context.Context, *proto_user_service.GetUsersRequest) (*proto_user_service.GetUsersResponse, error) {
 
 	var users = []models.UserModel{}
@@ -27,13 +27,17 @@ func (u *userService) GetUsers(context.Context, *proto_user_service.GetUsersRequ
 	}
 	var protoUsers []*proto_user_service.User
 	for _, user := range users {
+		var image string
+		if user.ImageUrl == nil {
+			image = ""
+		}
 		protoUser := proto_user_service.User{
 			Id:           user.ID,
 			Username:     user.Nickname,
 			PasswordHash: user.PasswordHash,
 			Email:        user.Email,
 			Age:          uint32(*user.Age),
-			ImageUrl:     *user.ImageUrl,
+			ImageUrl:     image,
 		}
 		protoUsers = append(protoUsers, &protoUser)
 
@@ -42,23 +46,37 @@ func (u *userService) GetUsers(context.Context, *proto_user_service.GetUsersRequ
 	res := &proto_user_service.GetUsersResponse{Status: "Success", Users: protoUsers}
 	return res, nil
 }
-func (u *userService) UpdateUser(ctx context.Context, in *proto_user_service.UpdateUserRequest) (*proto_user_service.UpdateUserResponse, error) {
-	age := int(*in.Age)
 
-	user := &models.UserModel{
-		Nickname:     *in.Username,
-		PasswordHash: *in.PasswordHash,
-		ImageUrl:     in.ImageUrl,
-		Email:        *in.Email,
-		Age:          &age,
+func (u *userService) UpdateUser(ctx context.Context, in *proto_user_service.UpdateUserRequest) (*proto_user_service.UpdateUserResponse, error) {
+
+	existingUser, err := u.userRepository.FindById(ctx, *in.Id)
+	if err != nil {
+		logrus.Errorf("Error while fetching user: %s", err)
+		return &proto_user_service.UpdateUserResponse{Status: "Error"}, err
 	}
-	if err := u.userRepository.Update(ctx, user); err != nil {
-		logrus.Errorf("Error while update user, eror inf: %s", err)
-		res := proto_user_service.UpdateUserResponse{Status: "Success"}
-		return &res, err
+
+	if in.Username != nil {
+		existingUser.Nickname = *in.Username
+	}
+	if in.PasswordHash != nil {
+		existingUser.PasswordHash = *in.PasswordHash
+	}
+	if in.ImageUrl != nil {
+		existingUser.ImageUrl = in.ImageUrl
+	}
+	if in.Email != nil {
+		existingUser.Email = *in.Email
+	}
+	if in.Age != nil {
+		age := int(*in.Age)
+		existingUser.Age = &age
+	}
+
+	if err := u.userRepository.Update(ctx, &existingUser); err != nil {
+		logrus.Errorf("Error while updating user, error info: %s", err)
+		return &proto_user_service.UpdateUserResponse{Status: "Error"}, err
 	}
 	res := proto_user_service.UpdateUserResponse{Status: "Success"}
-
 	return &res, nil
 }
 func (u *userService) RegisterUser(ctx context.Context, in *proto_user_service.RegisterUserRequest) (*proto_user_service.RegisterUserResponse, error) {
@@ -75,13 +93,14 @@ func (u *userService) RegisterUser(ctx context.Context, in *proto_user_service.R
 		Age:          &age,
 		ImageUrl:     &in.ImageUrl,
 	}
-	err = u.userRepository.Create(ctx, &user)
+	id, err := u.userRepository.Create(ctx, &user)
 	if err != nil {
 		logrus.Errorf("Error creating user: %w", err)
 		return nil, err
 	}
 	req := proto_user_service.RegisterUserResponse{
-		UserId: "sadasdsad",
+		UserId: id,
+		Status: "Success",
 	}
 
 	return &req, nil
@@ -110,21 +129,28 @@ func (u *userService) DeleteUser(ctx context.Context, req *proto_user_service.De
 	return &res, nil
 }
 
-// / NEED TO BE TESTED
+// If switch fields, querry will create new friends pair
 func (u *userService) AddFriends(ctx context.Context, usr *proto_user_service.AddFriendsRequest) (*proto_user_service.AddFriendsResponse, error) {
 	friend := models.FriendListModel{
 		UserID:   usr.UserId_1,
 		FriendID: usr.UserId_2,
 	}
-	if err := u.friendsRepository.Create(ctx, &friend); err != nil {
+	logrus.Info("Create querry")
+	info, err := u.friendsRepository.Create(ctx, &friend)
+	logrus.Info(info)
+	if err != nil {
 		logrus.Errorf("Error while creating user: %s", err)
-		return &proto_user_service.AddFriendsResponse{Success: false, Message: "Server error"}, nil
+		res := &proto_user_service.AddFriendsResponse{Success: false, Message: info}
+		logrus.Info(res.Success)
+		logrus.Info(res.Message)
+		return res, nil
 	}
 	res := proto_user_service.AddFriendsResponse{Success: true, Message: "You add new friend"}
+	logrus.Info(res.Message)
+	logrus.Info(res.Success)
 	return &res, nil
 }
 
-// / NEED TO BE TESTED
 func (u *userService) DeleteFriend(ctx context.Context, req *proto_user_service.DeleteFriendsRequest) (*proto_user_service.DeleteFriendsResponse, error) {
 	friends := models.FriendListModel{
 		UserID:   req.UserId_1,
@@ -161,8 +187,9 @@ func (u *userService) ListOfFriends(ctx context.Context, req *proto_user_service
 	return res, nil
 }
 
-func CreateNewUserService(repo storage.UserRepository) *userService {
+func CreateNewUserService(usrRepo storage.UserRepository, friendRepo storage.FriendsRepository) *userService {
 	return &userService{
-		userRepository: repo,
+		userRepository:    usrRepo,
+		friendsRepository: friendRepo,
 	}
 }

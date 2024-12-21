@@ -43,7 +43,8 @@ func main() {
 
 	grpcServer := grpc.NewServer()
 	userRepo := repo.NewUserRepository(postgresqlClient)
-	userService := service.CreateNewUserService(userRepo)
+	friendRepo := repo.NewFriendsRepository(postgresqlClient)
+	userService := service.CreateNewUserService(userRepo, friendRepo)
 
 	proto_user_service.RegisterUserServiceServer(grpcServer, userService)
 

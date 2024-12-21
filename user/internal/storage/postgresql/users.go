@@ -11,12 +11,14 @@ import (
 	"gomessage.com/users/pkg/postgresql"
 )
 
+const EmptyString = " "
+
 type userRepository struct {
 	client postgresql.Client
 }
 
 // Create implements user.UserRepository.
-func (r *userRepository) Create(ctx context.Context, user *models.UserModel) error {
+func (r *userRepository) Create(ctx context.Context, user *models.UserModel) (string, error) {
 	q := `INSERT INTO users
 			(nickname, password_hash, email, age, image_url) 
 		VALUES 
@@ -29,11 +31,11 @@ func (r *userRepository) Create(ctx context.Context, user *models.UserModel) err
 	if err != nil {
 		if pgErr, ok := err.(*pgconn.PgError); ok {
 			fmt.Println(fmt.Sprintf("Sql Error: %s, Detail %s, Where %s", pgErr.Message, pgErr.Detail, pgErr.Where))
-			return err
+			return EmptyString, err
 		}
-		return err
+		return EmptyString, err
 	}
-	return nil
+	return user.ID, nil
 }
 
 // Delete implements user.UserRepository.
@@ -83,6 +85,17 @@ func (r *userRepository) FindOne(ctx context.Context, user *models.UserModel) (m
    					OR ($1 IS NULL AND email = $2 AND password_hash = $3);`
 
 	qrow := r.client.QueryRow(ctx, querry, user.ID, user.Nickname, user.PasswordHash)
+	var usr models.UserModel
+	if err := qrow.Scan(&usr.ID, &usr.Nickname, &usr.PasswordHash, &usr.Email, &usr.Age, &usr.ImageUrl); err != nil {
+		return models.UserModel{}, err
+	}
+	return usr, nil
+}
+
+func (r *userRepository) FindById(ctx context.Context, id string) (models.UserModel, error) {
+	querry := `SELECT user_id, nickname, password_hash, email, age, image_url
+			FROM users WHERE user_id=$1`
+	qrow := r.client.QueryRow(ctx, querry, id)
 	var usr models.UserModel
 	if err := qrow.Scan(&usr.ID, &usr.Nickname, &usr.PasswordHash, &usr.Email, &usr.Age, &usr.ImageUrl); err != nil {
 		return models.UserModel{}, err

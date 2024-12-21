@@ -4,5 +4,7 @@
 configs/
 Makefile
 
+usersconn.session.sql
+
 user/test-api.http-target-2__status-200__2024-24-13--22-12-59.txt
 user/test-api.http
