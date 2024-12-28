@@ -2,18 +2,20 @@ package kafka
 
 import (
 	"bytes"
-	"encoding/binary"
+	"encoding/gob"
 	"strings"
 
 	"github.com/confluentinc/confluent-kafka-go/kafka"
 	"github.com/sirupsen/logrus"
 	"gommessage.com/messager/internal/models"
 	"gommessage.com/messager/internal/storage"
+	"gommessage.com/messager/internal/storage/cassandra"
 )
 
 const (
 	sesstionTimeout = 7000 //ms
 	noTimeout       = -1
+	nilID           = ""
 )
 
 type Consumer struct {
@@ -47,7 +49,7 @@ func (c *Consumer) Consuming() error {
 		kafkaMsg, err := c.consumer.ReadMessage(noTimeout)
 		if err != nil {
 			logrus.Error("Error reading message: ", err)
-			continue 
+			continue
 		}
 
 		if kafkaMsg == nil {
@@ -55,12 +57,12 @@ func (c *Consumer) Consuming() error {
 		}
 
 		var chatsmod models.ChatsModel
-		err = binary.Read(bytes.NewReader(kafkaMsg.Value), binary.LittleEndian, &chatsmod)
+		decoder := gob.NewDecoder(bytes.NewReader(kafkaMsg.Value))
+		err = decoder.Decode(&chatsmod)
 		if err != nil {
 			logrus.Error("Error decoding message: ", err)
-			continue 
+			continue
 		}
-
 		if err := c.processChat(chatsmod); err != nil {
 			logrus.Error("Error processing chat: ", err)
 		}
@@ -70,7 +72,16 @@ func (c *Consumer) Consuming() error {
 func (c *Consumer) processChat(chatsmod models.ChatsModel) error {
 	switch chatsmod.Action {
 	case "CREATE":
-		return c.chatRepo.CreateChat(&chatsmod)
+		uid := chatsmod.User_id1
+		uid2 := chatsmod.User_id2
+		logrus.Infof("Id %s, id %s", uid, uid2)
+		if err := cassandra.CreateChat(uid, uid2); err != nil {
+			logrus.Error("Error creating chat: ", err)
+			return err
+		}
+
+		logrus.Infof("Chat created successfully: %+v", chatsmod)
+		return nil
 	case "DELETE":
 		return c.chatRepo.DeleteChat(chatsmod.Chat_id)
 	default:

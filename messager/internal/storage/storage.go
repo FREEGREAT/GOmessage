@@ -1,8 +1,6 @@
 package storage
 
-import "gommessage.com/messager/internal/models"
-
 type ChatRepository interface {
-	CreateChat(message *models.ChatsModel) error
+	CreateChat(userID, userID2 string) error
 	DeleteChat(messageID string) error
 }
