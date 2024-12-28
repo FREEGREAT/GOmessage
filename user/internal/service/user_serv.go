@@ -6,6 +6,7 @@ import (
 	proto_user_service "github.com/FREEGREAT/protos/gen/go/user"
 	"github.com/sirupsen/logrus"
 	"gomessage.com/users/internal/models"
+	"gomessage.com/users/internal/service/kafka"
 	"gomessage.com/users/internal/storage"
 	"gomessage.com/users/pkg/utils"
 )
@@ -13,9 +14,17 @@ import (
 type userService struct {
 	userRepository    storage.UserRepository
 	friendsRepository storage.FriendsRepository
+	kProducer         kafka.Producer
 	proto_user_service.UnimplementedUserServiceServer
 }
 
+func CreateNewUserService(usrRepo storage.UserRepository, friendRepo storage.FriendsRepository, producer kafka.Producer) *userService {
+	return &userService{
+		userRepository:    usrRepo,
+		friendsRepository: friendRepo,
+		kProducer:         producer,
+	}
+}
 
 func (u *userService) GetUsers(context.Context, *proto_user_service.GetUsersRequest) (*proto_user_service.GetUsersResponse, error) {
 
@@ -135,17 +144,27 @@ func (u *userService) AddFriends(ctx context.Context, usr *proto_user_service.Ad
 		UserID:   usr.UserId_1,
 		FriendID: usr.UserId_2,
 	}
+	chat := models.ChatsModel{
+		User_id1: usr.UserId_1,
+		User_id2: usr.UserId_2,
+		Action:   "CREATE",
+	}
 	logrus.Info("Create querry")
 	info, err := u.friendsRepository.Create(ctx, &friend)
 	logrus.Info(info)
 	if err != nil {
-		logrus.Errorf("Error while creating user: %s", err)
+		logrus.Errorf("Error while adding friends: %s", err)
 		res := &proto_user_service.AddFriendsResponse{Success: false, Message: info}
 		logrus.Info(res.Success)
 		logrus.Info(res.Message)
 		return res, nil
 	}
 	res := proto_user_service.AddFriendsResponse{Success: true, Message: "You add new friend"}
+
+	if err := u.kProducer.Produce(chat, "chat-topic"); err != nil {
+		logrus.Error(err)
+	}
+
 	logrus.Info(res.Message)
 	logrus.Info(res.Success)
 	return &res, nil
@@ -185,11 +204,4 @@ func (u *userService) ListOfFriends(ctx context.Context, req *proto_user_service
 
 	res := &proto_user_service.ListOfFriendsResponse{Friend: protoFriends}
 	return res, nil
-}
-
-func CreateNewUserService(usrRepo storage.UserRepository, friendRepo storage.FriendsRepository) *userService {
-	return &userService{
-		userRepository:    usrRepo,
-		friendsRepository: friendRepo,
-	}
 }

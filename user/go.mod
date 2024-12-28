@@ -15,6 +15,8 @@ require (
 
 require (
 	github.com/FREEGREAT/protos v0.0.0-20241220220316-257b9341eefe // indirect
+	github.com/confluentinc/confluent-kafka-go v1.9.2 // indirect
+	github.com/confluentinc/librdkafka v2.6.1+incompatible // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect

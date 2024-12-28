@@ -62,7 +62,7 @@ func (m *mediaRepository) UploadImgFile(img_name string, file []byte, contentTyp
 
 	fmt.Println("Uploaded", content.Key, "to", content.Bucket, content.ETag, content.VersionID, content.Size)
 	fileID = img_name
-
+	
 	return url.Path, err
 
 }

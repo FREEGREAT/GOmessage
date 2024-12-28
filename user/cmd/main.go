@@ -10,6 +10,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gomessage.com/users/internal/service"
+	"gomessage.com/users/internal/service/kafka"
 	repo "gomessage.com/users/internal/storage/postgresql"
 	"gomessage.com/users/pkg/postgresql"
 	"gomessage.com/users/pkg/utils"
@@ -17,6 +18,11 @@ import (
 )
 
 const connectAttempts = 3
+
+var addres = []string{
+	"localhost:9092",
+	"localhost:9093",
+}
 
 func main() {
 	logrus.Info("Initializing application")
@@ -40,11 +46,14 @@ func main() {
 	if err != nil {
 		logrus.Fatalf("Failed to initialize database client: %s", err)
 	}
-
+	p, err := kafka.NewProducer(addres)
+	if err != nil {
+		logrus.Fatal("Error while creating producer; Err: %w", err)
+	}
 	grpcServer := grpc.NewServer()
 	userRepo := repo.NewUserRepository(postgresqlClient)
 	friendRepo := repo.NewFriendsRepository(postgresqlClient)
-	userService := service.CreateNewUserService(userRepo, friendRepo)
+	userService := service.CreateNewUserService(userRepo, friendRepo, *p)
 
 	proto_user_service.RegisterUserServiceServer(grpcServer, userService)
 
@@ -55,8 +64,6 @@ func main() {
 		logrus.Fatalf("failed to listen: %v", err)
 
 	}
-
-	logrus.Println("Media service is running on port 50051")
 
 	if err := grpcServer.Serve(lis); err != nil {
 

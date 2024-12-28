@@ -31,8 +31,6 @@ func main() {
 
 	proto_media_service.RegisterMediaServiceServer(grpcServer, mediaService)
 
-	logrus.Println("Media service is running on port 50051")
-
 	if err := grpcServer.Serve(lis); err != nil {
 
 		logrus.Fatalf("failed to serve: %v", err)
