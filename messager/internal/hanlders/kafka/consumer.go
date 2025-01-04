@@ -9,7 +9,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"gommessage.com/messager/internal/models"
 	"gommessage.com/messager/internal/storage"
-	"gommessage.com/messager/internal/storage/cassandra"
 )
 
 const (
@@ -28,7 +27,7 @@ func NewConsumer(addr []string, topic, consumerGroup string) (*Consumer, error) 
 		"bootstrap.servers":        strings.Join(addr, ","),
 		"group.id":                 consumerGroup,
 		"session.timeout.ms":       sesstionTimeout,
-		"enable.auto.offset.store": false,
+		"enable.auto.offset.store": true,
 		"enable.auto.commit":       true,
 		"auto.commit.interval.ms":  6000,
 		"auto.offset.reset":        "earliest",
@@ -66,16 +65,17 @@ func (c *Consumer) Consuming() error {
 		if err := c.processChat(chatsmod); err != nil {
 			logrus.Error("Error processing chat: ", err)
 		}
+		logrus.Infof("Message consumed: %+v", chatsmod)
 	}
 }
 
 func (c *Consumer) processChat(chatsmod models.ChatsModel) error {
+	uid := chatsmod.User_id1
+	uid2 := chatsmod.User_id2
 	switch chatsmod.Action {
 	case "CREATE":
-		uid := chatsmod.User_id1
-		uid2 := chatsmod.User_id2
 		logrus.Infof("Id %s, id %s", uid, uid2)
-		if err := cassandra.CreateChat(uid, uid2); err != nil {
+		if err := c.chatRepo.CreateChat(uid, uid2); err != nil {
 			logrus.Error("Error creating chat: ", err)
 			return err
 		}
@@ -83,7 +83,15 @@ func (c *Consumer) processChat(chatsmod models.ChatsModel) error {
 		logrus.Infof("Chat created successfully: %+v", chatsmod)
 		return nil
 	case "DELETE":
-		return c.chatRepo.DeleteChat(chatsmod.Chat_id)
+		uid := chatsmod.User_id1
+		uid2 := chatsmod.User_id2
+		logrus.Infof("Id %s, id %s", uid, uid2)
+		if err := c.chatRepo.DeleteChat(uid, uid2); err != nil {
+			logrus.Error("Error deleting chat: ", err)
+			return err
+		}
+		logrus.Infof("Chat deleted successfully: %+v", chatsmod)
+		return nil
 	default:
 		logrus.Warn("Unknown action: ", chatsmod.Action)
 		return nil

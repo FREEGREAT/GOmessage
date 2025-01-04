@@ -14,20 +14,18 @@ import (
 	"gomessage.com/gateway/pkg"
 )
 
-var err_cfg = pkg.InitConfig()
-
 func main() {
-	if err_cfg != nil {
-		panic("Error loading config at main.go")
+	if err := pkg.InitConfig(); err != nil {
+		logrus.Fatalf("error init config: %s", err.Error())
 	}
 	router := httprouter.New()
 	logrus.Info("Registering handlers")
 
-	user_conn, err := pkg.NewGRPCConn(viper.GetString("grpc.user_addr"))
+	user_conn, err := pkg.NewGRPCConn(viper.GetString("grpc.user_service"))
 	if err != nil {
 		logrus.Errorf("Error while creating User GRPC connect: %w", err)
 	}
-	media_conn, err := pkg.NewGRPCConn(viper.GetString("grpc.media_addr"))
+	media_conn, err := pkg.NewGRPCConn(viper.GetString("grpc.media_service"))
 	if err != nil {
 		logrus.Errorf("Error while creating Media GRPC connect: %w", err)
 	}
@@ -40,7 +38,7 @@ func main() {
 
 func start(router *httprouter.Router) {
 	logrus.Info("Starting application")
-	listener, err := net.Listen("tcp", ":8081")
+	listener, err := net.Listen("tcp", viper.GetString("http.addr"))
 	if err != nil {
 		panic(err)
 	}
@@ -49,6 +47,6 @@ func start(router *httprouter.Router) {
 		WriteTimeout: 15 * time.Second,
 		ReadTimeout:  15 * time.Second,
 	}
-	logrus.Info("Server is listening on port :8081")
+	logrus.Infof("Server is listening on port %s", viper.GetString("http.addr"))
 	logrus.Fatalln(server.Serve(listener))
 }

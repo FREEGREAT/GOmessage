@@ -3,7 +3,7 @@ module gomessage.com/media
 go 1.23.4
 
 require (
-	github.com/FREEGREAT/protos v0.0.0-20241220205540-3f2ea0c43db4
+	github.com/FREEGREAT/protos v0.0.0-20250103193551-17ba181473f2
 	github.com/joho/godotenv v1.5.1
 	github.com/minio/minio-go/v7 v7.0.82
 	github.com/sirupsen/logrus v1.9.3
@@ -40,7 +40,7 @@ require (
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 // indirect
-	google.golang.org/protobuf v1.35.1 // indirect
+	google.golang.org/protobuf v1.36.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

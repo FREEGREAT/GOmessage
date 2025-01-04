@@ -1,3 +1,9 @@
+
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+SELECT uuid_generate_v4();
+
+
 CREATE TABLE users(
     user_id uuid DEFAULT uuid_generate_v4(),
     nickname varchar(55) not null,

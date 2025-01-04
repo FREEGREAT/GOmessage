@@ -3,10 +3,11 @@ module gomessage.com/users
 go 1.23.4
 
 require (
+	github.com/FREEGREAT/protos v0.0.0-20250103193551-17ba181473f2
+	github.com/confluentinc/confluent-kafka-go v1.9.2
 	github.com/jackc/pgconn v1.14.3
+	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
 	github.com/jackc/pgx/v4 v4.18.3
-	github.com/joho/godotenv v1.5.1
-	github.com/julienschmidt/httprouter v1.3.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.19.0
 	golang.org/x/crypto v0.31.0
@@ -14,13 +15,10 @@ require (
 )
 
 require (
-	github.com/FREEGREAT/protos v0.0.0-20241220220316-257b9341eefe // indirect
-	github.com/confluentinc/confluent-kafka-go v1.9.2 // indirect
-	github.com/confluentinc/librdkafka v2.6.1+incompatible // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect
-	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438 // indirect
 	github.com/jackc/pgio v1.0.0 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgproto3/v2 v2.3.3 // indirect
@@ -38,14 +36,13 @@ require (
 	github.com/spf13/cast v1.7.1 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67 // indirect
 	golang.org/x/net v0.33.0 // indirect
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241216192217-9240e9c98484 // indirect
-	google.golang.org/protobuf v1.36.0 // indirect
+	google.golang.org/protobuf v1.36.1 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

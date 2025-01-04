@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 
 	proto_media_service "github.com/FREEGREAT/protos/gen/go/media"
 	"github.com/google/uuid"
@@ -14,14 +15,18 @@ import (
 	proto_user_service "github.com/FREEGREAT/protos/gen/go/user"
 	"github.com/julienschmidt/httprouter"
 	"gomessage.com/gateway/internal/models"
+	"gomessage.com/gateway/internal/service"
 )
 
-const nonePhoto = "NULL"
-const SuccessResponse = "Success"
+const (
+	nonePhoto       = "NULL"
+	SuccessResponse = "Success"
+)
 const (
 	usersURL  = "/users"
 	userURL   = "/user/:uuid"
 	loginURL  = "/login"
+	logoutURL = "/logout"
 	signupURL = "/signup"
 	deleteUrl = "/delete/:uuid"
 	friendURL = "/friend"
@@ -39,6 +44,7 @@ func NewGatewayHandler(grpcClient proto_user_service.UserServiceClient, mc proto
 func (h *handler) Register(router *httprouter.Router) {
 	router.GET(usersURL, h.ListOfUsers)
 	router.GET(friendURL, h.ListOfFriends)
+	router.GET(logoutURL, h.Logout)
 
 	router.POST(signupURL, h.CreateUser)
 	router.POST(friendURL, h.AddFriend)
@@ -170,23 +176,61 @@ func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request, _ httprouter
 		http.Error(w, "Invalid input: "+err.Error(), http.StatusBadRequest)
 		return
 	}
+
 	if loginData.Email == "" || loginData.PasswordHash == "" {
-		http.Error(w, "Missing required fields: nickname or password", http.StatusBadRequest)
+		http.Error(w, "Missing required fields: email or password", http.StatusBadRequest)
 		return
 	}
+
 	grpcRequest := &proto_user_service.LoginUserRequest{
 		Email:    loginData.Email,
 		Password: loginData.PasswordHash,
 	}
 
-	_, err := h.UserGrpcClient.LoginUser(context.Background(), grpcRequest)
+	grpcResponse, err := h.UserGrpcClient.LoginUser(context.Background(), grpcRequest)
 	if err != nil {
 		http.Error(w, "Failed to login: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+
+	// Створення токена
+	accessToken, err := service.ClaimToken(grpcResponse)
+	if err != nil {
+		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
+		return
+	}
+
+	// Встановлення кукі
+	cookie := http.Cookie{
+		Name:     "jwt",
+		Value:    accessToken,
+		Path:     "/",
+		Expires:  time.Now().Add(1 * time.Hour),
+		MaxAge:   3600,
+		Secure:   false,
+		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	}
+
+	http.SetCookie(w, &cookie)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("User logged in successfully"))
+}
 
+func (h *handler) Logout(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
+	cookie := &http.Cookie{
+		Name:     "jwt",
+		Value:    "",
+		Path:     " ",
+		Domain:   " ",
+		MaxAge:   -1,
+		Secure:   false,
+		HttpOnly: true,
+	}
+
+	http.SetCookie(w, cookie)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("User logged in successfully"))
 }
 
 func (h *handler) UpdateUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {

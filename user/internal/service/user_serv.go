@@ -5,6 +5,7 @@ import (
 
 	proto_user_service "github.com/FREEGREAT/protos/gen/go/user"
 	"github.com/sirupsen/logrus"
+	"github.com/spf13/viper"
 	"gomessage.com/users/internal/models"
 	"gomessage.com/users/internal/service/kafka"
 	"gomessage.com/users/internal/storage"
@@ -19,6 +20,7 @@ type userService struct {
 }
 
 func CreateNewUserService(usrRepo storage.UserRepository, friendRepo storage.FriendsRepository, producer kafka.Producer) *userService {
+
 	return &userService{
 		userRepository:    usrRepo,
 		friendsRepository: friendRepo,
@@ -125,9 +127,13 @@ func (u *userService) LoginUser(ctx context.Context, in *proto_user_service.Logi
 		Email:        in.Email,
 		PasswordHash: password_hash,
 	}
-	u.userRepository.FindOne(ctx, &user)
+	user, err = u.userRepository.FindOne(ctx, &user)
+	if err != nil {
+		logrus.Errorf("Error while creating user")
+		return &proto_user_service.LoginUserResponse{Status: "error"}, nil
+	}
 
-	return &proto_user_service.LoginUserResponse{Status: "success"}, nil
+	return &proto_user_service.LoginUserResponse{Status: "success", Username: user.Nickname, Id: user.ID, Age: string(*user.Age), ImageUrl: *user.ImageUrl}, nil
 }
 func (u *userService) DeleteUser(ctx context.Context, req *proto_user_service.DeleteUserRequest) (*proto_user_service.DeleteUserResponse, error) {
 	name, err := u.userRepository.Delete(ctx, req.Id)
@@ -155,13 +161,11 @@ func (u *userService) AddFriends(ctx context.Context, usr *proto_user_service.Ad
 	if err != nil {
 		logrus.Errorf("Error while adding friends: %s", err)
 		res := &proto_user_service.AddFriendsResponse{Success: false, Message: info}
-		logrus.Info(res.Success)
-		logrus.Info(res.Message)
 		return res, nil
 	}
 	res := proto_user_service.AddFriendsResponse{Success: true, Message: "You add new friend"}
 
-	if err := u.kProducer.Produce(chat, "chat-topic"); err != nil {
+	if err := u.kProducer.Produce(chat, viper.GetString("kafka.topic")); err != nil {
 		logrus.Error(err)
 	}
 
@@ -175,9 +179,18 @@ func (u *userService) DeleteFriend(ctx context.Context, req *proto_user_service.
 		UserID:   req.UserId_1,
 		FriendID: req.UserId_2,
 	}
+	chat := models.ChatsModel{
+		User_id1: req.UserId_1,
+		User_id2: req.UserId_2,
+		Action:   "DELETE",
+	}
 	if err := u.friendsRepository.Delete(ctx, &friends); err != nil {
 		logrus.Errorf("Error while deleting friend. ErrInfo: %s", err)
 		return &proto_user_service.DeleteFriendsResponse{Success: false, Message: "Server error"}, nil
+	}
+
+	if err := u.kProducer.Produce(chat, viper.GetString("kafka.topic")); err != nil {
+		logrus.Error(err)
 	}
 	res := proto_user_service.DeleteFriendsResponse{Success: true, Message: "You are not friends anymore"}
 	return &res, nil

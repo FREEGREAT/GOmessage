@@ -2,6 +2,7 @@ package client_minio
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/minio/minio-go/v7"
@@ -12,27 +13,26 @@ import (
 )
 
 var err_cfg = pkg.InitConfig()
-var storage = viper.GetString("minio.storage")
+var storage = viper.GetString("minio.bucket")
 
 func CreateConncet() *minio.Client {
 	if err_cfg != nil {
 		logrus.Fatalf("error init config: %s", err_cfg.Error())
 	}
-
 	useSSL := false
 
-	// Ensure the endpoint is set correctly
-	endpoint := viper.GetString("minio.endpoint")
+	endpoint := strings.TrimSpace(viper.GetString("minio.endpoint"))
 	logrus.Infof("Connecting to MinIO at %s", endpoint)
 
 	minioClient, err := minio.New(endpoint, &minio.Options{
-		Creds:  credentials.NewStaticV4(viper.GetString("minio.access_k"), viper.GetString("minio.secret_k"), ""),
+		Creds:  credentials.NewStaticV4(viper.GetString("minio.accessKeyID"), viper.GetString("minio.secretAccess"), ""),
 		Secure: useSSL,
 	})
 	if err != nil {
+		logrus.Info("blyat1")
 		logrus.Fatalln(err)
 	}
-
+	logrus.Info("blyat1")
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
@@ -40,7 +40,7 @@ func CreateConncet() *minio.Client {
 	if err != nil {
 		logrus.Fatalf("Error while checking bucket: %v.   Bucketname: %s", err, storage)
 	}
-
+	logrus.Info("blyat2")
 	if !exists {
 		logrus.Printf("Bucket %s does not exist. Creating...", storage)
 		err = minioClient.MakeBucket(ctx, storage, minio.MakeBucketOptions{})
@@ -55,7 +55,7 @@ func CreateConncet() *minio.Client {
 
 func CreateBucket() {
 	minioClient := CreateConncet()
-
+	logrus.Info("blyat4")
 	bucketName := storage
 	err := minioClient.MakeBucket(context.Background(), storage, minio.MakeBucketOptions{})
 	if err != nil {
