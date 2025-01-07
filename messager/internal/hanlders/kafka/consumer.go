@@ -22,7 +22,7 @@ type Consumer struct {
 	chatRepo storage.ChatRepository
 }
 
-func NewConsumer(addr []string, topic, consumerGroup string) (*Consumer, error) {
+func NewConsumer(addr []string, topic, consumerGroup string, repo storage.ChatRepository) (*Consumer, error) {
 	cfg := &kafka.ConfigMap{
 		"bootstrap.servers":        strings.Join(addr, ","),
 		"group.id":                 consumerGroup,
@@ -39,7 +39,7 @@ func NewConsumer(addr []string, topic, consumerGroup string) (*Consumer, error) 
 	if err = c.Subscribe(topic, nil); err != nil {
 		return nil, err
 	}
-	return &Consumer{consumer: c}, nil
+	return &Consumer{consumer: c, chatRepo: repo}, nil
 }
 
 func (c *Consumer) Consuming() error {
@@ -70,10 +70,11 @@ func (c *Consumer) Consuming() error {
 }
 
 func (c *Consumer) processChat(chatsmod models.ChatsModel) error {
-	uid := chatsmod.User_id1
-	uid2 := chatsmod.User_id2
+
 	switch chatsmod.Action {
 	case "CREATE":
+		uid := chatsmod.User_id1
+		uid2 := chatsmod.User_id2
 		logrus.Infof("Id %s, id %s", uid, uid2)
 		if err := c.chatRepo.CreateChat(uid, uid2); err != nil {
 			logrus.Error("Error creating chat: ", err)

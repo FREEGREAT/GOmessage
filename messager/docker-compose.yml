@@ -7,8 +7,9 @@ services:
     environment:
       - CASSANDRA_USER=admin
       - CASSANDRA_PASSWORD=admin
+      - MAX_HEAP_SIZE=2G
+      - HEAP_NEWSIZE=512M
     volumes:
       - cassandra-data:/var/lib/cassandra
-
 volumes:
   cassandra-data:

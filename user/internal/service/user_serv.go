@@ -12,6 +12,8 @@ import (
 	"gomessage.com/users/pkg/utils"
 )
 
+const emptyString = ""
+
 type userService struct {
 	userRepository    storage.UserRepository
 	friendsRepository storage.FriendsRepository
@@ -40,7 +42,7 @@ func (u *userService) GetUsers(context.Context, *proto_user_service.GetUsersRequ
 	for _, user := range users {
 		var image string
 		if user.ImageUrl == nil {
-			image = ""
+			image = emptyString
 		}
 		protoUser := proto_user_service.User{
 			Id:           user.ID,
@@ -144,7 +146,6 @@ func (u *userService) DeleteUser(ctx context.Context, req *proto_user_service.De
 	return &res, nil
 }
 
-// If switch fields, querry will create new friends pair
 func (u *userService) AddFriends(ctx context.Context, usr *proto_user_service.AddFriendsRequest) (*proto_user_service.AddFriendsResponse, error) {
 	friend := models.FriendListModel{
 		UserID:   usr.UserId_1,

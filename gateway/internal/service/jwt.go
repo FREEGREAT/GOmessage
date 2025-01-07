@@ -1,40 +1,87 @@
 package service
 
 import (
+	"errors"
 	"time"
 
-	proto_user_service "github.com/FREEGREAT/protos/gen/go/user"
 	"github.com/golang-jwt/jwt/v4"
+	"github.com/spf13/viper"
+	"gomessage.com/gateway/internal/models"
 )
 
-const (
-	secretKey   = "secret"
-	errorString = ""
-)
-
-type jwtClaims struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
-	Age      string `json:"age"`
-	ImageUrl string `json:"img_url"`
-	jwt.RegisteredClaims
+type JWTService struct {
+	secretKey []byte
+	issuer    string
 }
 
-func ClaimToken(grpcResponse *proto_user_service.LoginUserResponse) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwtClaims{
-		ID:       grpcResponse.Id,
-		Username: grpcResponse.Username,
-		Age:      grpcResponse.Age,
-		ImageUrl: grpcResponse.ImageUrl,
-		RegisteredClaims: jwt.RegisteredClaims{
-			Issuer:    grpcResponse.Id,
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-		},
-	})
+const emptyString = ""
 
-	ss, err := token.SignedString([]byte(secretKey))
-	if err != nil {
-		return errorString, err
+func NewJWTService() *JWTService {
+	secretKey := []byte(viper.GetString("jwt.secret"))
+	if len(secretKey) == 0 {
+		panic("Pleace create key")
 	}
-	return ss, nil
+
+	return &JWTService{
+		secretKey: secretKey,
+		issuer:    "gomessage_gateway",
+	}
+}
+
+func (s *JWTService) GenerateToken(user_id, nickname, image_url string, age int) (string, error) {
+
+	claims := models.Claims{
+		UserID:   user_id,
+		Nickname: nickname,
+		Age:      &age,
+		ImageUrl: &image_url,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(24 * time.Hour).Unix(),
+			Issuer:    s.issuer,
+			IssuedAt:  time.Now().Unix(),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString(s.secretKey)
+}
+
+func (s *JWTService) ValidateToken(tokenString string) (*models.Claims, error) {
+	token, err := jwt.ParseWithClaims(
+		tokenString,
+		&models.Claims{},
+		func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, errors.New("invalid token method")
+			}
+			return s.secretKey, nil
+		},
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Перевірка claims
+	claims, ok := token.Claims.(*models.Claims)
+	if !ok || !token.Valid {
+		return nil, errors.New("invalid token claims")
+	}
+
+	// Перевірка терміну дії
+	if claims.ExpiresAt < time.Now().Unix() {
+		return nil, errors.New("token expired")
+	}
+
+	return claims, nil
+}
+
+func (s *JWTService) RefreshToken(tokenString string) (string, error) {
+	claims, err := s.ValidateToken(tokenString)
+	if err != nil {
+		return emptyString, err
+	}
+
+	// Генерація нового токена
+	return s.GenerateToken(claims.Id, claims.Nickname, *claims.ImageUrl, *claims.Age)
 }

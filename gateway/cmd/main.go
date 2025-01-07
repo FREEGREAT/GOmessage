@@ -11,6 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
 	"gomessage.com/gateway/internal/handler"
+	"gomessage.com/gateway/internal/service"
 	"gomessage.com/gateway/pkg"
 )
 
@@ -18,6 +19,8 @@ func main() {
 	if err := pkg.InitConfig(); err != nil {
 		logrus.Fatalf("error init config: %s", err.Error())
 	}
+
+	jwtService := service.NewJWTService()
 	router := httprouter.New()
 	logrus.Info("Registering handlers")
 
@@ -31,7 +34,7 @@ func main() {
 	}
 	clientMediaService := proto_media_service.NewMediaServiceClient(media_conn)
 	clientUserService := proto_user_service.NewUserServiceClient(user_conn)
-	gatehand := handler.NewGatewayHandler(clientUserService, clientMediaService)
+	gatehand := handler.NewGatewayHandler(clientUserService, clientMediaService, jwtService)
 	gatehand.Register(router)
 	start(router)
 }

@@ -1,10 +1,9 @@
 package wsserver
 
 type wsMessage struct {
-	Content     string `json:"content"`
-	FromUser    string `json:"from_user"`
-	ToUser      string `json:"to_user"`
-	IPAddress   string `json:"ip_address"`
-	Time        string `json:"time"`
-	MessageType string `json:"message_type"`
+	UserID    string `json:"userId"`
+	ChatID    string `json:"chatId"`
+	Content   string `json:"content"`
+	Time      string `json:"time"`
+	IPAddress string `json:"ipAddress"`
 }

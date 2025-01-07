@@ -15,8 +15,6 @@ import (
 	"google.golang.org/grpc"
 )
 
-const connectAttempts = 3
-
 var addres = []string{
 	"localhost:9092",
 	"localhost:9093",
@@ -30,7 +28,7 @@ func main() {
 	}
 	// Створення клієнта для PostgreSQL
 	logrus.Info("Connecting to database")
-	postgresqlClient, err := postgresql.NewClient(context.TODO(), connectAttempts, postgresql.StorageConfig{
+	postgresqlClient, err := postgresql.NewClient(context.TODO(), viper.GetInt("postgre.connectAttempt"), postgresql.StorageConfig{
 		Host:     viper.GetString("postgre.host"),
 		Port:     viper.GetString("postgre.port"),
 		Username: viper.GetString("postgre.username"),
@@ -56,7 +54,7 @@ func main() {
 	if err != nil {
 		logrus.Fatalf("failed to listen: %v", err)
 	}
-
+	logrus.Info("Work!")
 	if err := grpcServer.Serve(lis); err != nil {
 		logrus.Fatalf("failed to serve: %v", err)
 	}

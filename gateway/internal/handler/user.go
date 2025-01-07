@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"time"
+	"strconv"
 
 	proto_media_service "github.com/FREEGREAT/protos/gen/go/media"
 	"github.com/google/uuid"
@@ -14,6 +14,7 @@ import (
 
 	proto_user_service "github.com/FREEGREAT/protos/gen/go/user"
 	"github.com/julienschmidt/httprouter"
+	"gomessage.com/gateway/internal/handler/middleware"
 	"gomessage.com/gateway/internal/models"
 	"gomessage.com/gateway/internal/service"
 )
@@ -35,25 +36,30 @@ const (
 type handler struct {
 	MediaGrpcClient proto_media_service.MediaServiceClient
 	UserGrpcClient  proto_user_service.UserServiceClient
+	jwtService      *service.JWTService
+	jwtMidlleware   *middleware.JWTMiddleware
 }
 
-func NewGatewayHandler(grpcClient proto_user_service.UserServiceClient, mc proto_media_service.MediaServiceClient) *handler {
-	return &handler{UserGrpcClient: grpcClient, MediaGrpcClient: mc}
+func NewGatewayHandler(grpcClient proto_user_service.UserServiceClient, mc proto_media_service.MediaServiceClient, jwtService *service.JWTService) *handler {
+	return &handler{
+		UserGrpcClient:  grpcClient,
+		MediaGrpcClient: mc,
+		jwtService:      jwtService,
+		jwtMidlleware:   middleware.NewJWTMiddleware(jwtService)}
 }
 
 func (h *handler) Register(router *httprouter.Router) {
-	router.GET(usersURL, h.ListOfUsers)
-	router.GET(friendURL, h.ListOfFriends)
-	router.GET(logoutURL, h.Logout)
+	router.GET(usersURL, h.jwtMidlleware.Middleware(h.ListOfUsers))
+	router.GET(friendURL, h.jwtMidlleware.Middleware(h.ListOfFriends))
 
 	router.POST(signupURL, h.CreateUser)
-	router.POST(friendURL, h.AddFriend)
+	router.POST(friendURL, h.jwtMidlleware.Middleware(h.AddFriend))
 	router.POST(loginURL, h.LoginUser)
 
-	router.PUT(userURL, h.UpdateUser)
+	router.PUT(userURL, h.jwtMidlleware.Middleware(h.UpdateUser))
 
-	router.DELETE(deleteUrl, h.DeleteUser)
-	router.DELETE(friendURL, h.DeleteFriend)
+	router.DELETE(deleteUrl, h.jwtMidlleware.Middleware(h.DeleteUser))
+	router.DELETE(friendURL, h.jwtMidlleware.Middleware(h.DeleteFriend))
 }
 
 func (h *handler) ListOfUsers(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -72,7 +78,6 @@ func (h *handler) ListOfUsers(w http.ResponseWriter, r *http.Request, _ httprout
 
 func (h *handler) ListOfFriends(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	defer r.Body.Close()
-
 	var friendData models.FriendListModel
 
 	if err := json.NewDecoder(r.Body).Decode(&friendData); err != nil {
@@ -101,13 +106,13 @@ func (h *handler) ListOfFriends(w http.ResponseWriter, r *http.Request, _ httpro
 }
 
 func (h *handler) CreateUser(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
-	defer r.Body.Close() // Закриваємо тіло запиту
+	defer r.Body.Close()
 
 	var user models.UserModel
 
 	r.ParseMultipartForm(10 << 20) // 10 MB
 	userPart := r.FormValue("user")
-
+	logrus.Infof("Received user part: %s", userPart)
 	if err := json.Unmarshal([]byte(userPart), &user); err != nil {
 		http.Error(w, "Invalid user data: "+err.Error(), http.StatusBadRequest)
 		return
@@ -187,50 +192,20 @@ func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request, _ httprouter
 		Password: loginData.PasswordHash,
 	}
 
-	grpcResponse, err := h.UserGrpcClient.LoginUser(context.Background(), grpcRequest)
+	grpcResp, err := h.UserGrpcClient.LoginUser(context.Background(), grpcRequest)
 	if err != nil {
 		http.Error(w, "Failed to login: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-
-	// Створення токена
-	accessToken, err := service.ClaimToken(grpcResponse)
+	age, err := strconv.Atoi(grpcResp.Age)
 	if err != nil {
-		http.Error(w, "Failed to generate token", http.StatusInternalServerError)
-		return
+		logrus.Error("Failed to get user age")
+		age = 0
 	}
+	token, err := h.jwtService.GenerateToken(grpcResp.Id, grpcResp.Username, grpcResp.ImageUrl, age)
 
-	// Встановлення кукі
-	cookie := http.Cookie{
-		Name:     "jwt",
-		Value:    accessToken,
-		Path:     "/",
-		Expires:  time.Now().Add(1 * time.Hour),
-		MaxAge:   3600,
-		Secure:   false,
-		HttpOnly: true,
-		SameSite: http.SameSiteLaxMode,
-	}
-
-	http.SetCookie(w, &cookie)
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("User logged in successfully"))
-}
-
-func (h *handler) Logout(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	cookie := &http.Cookie{
-		Name:     "jwt",
-		Value:    "",
-		Path:     " ",
-		Domain:   " ",
-		MaxAge:   -1,
-		Secure:   false,
-		HttpOnly: true,
-	}
-
-	http.SetCookie(w, cookie)
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("User logged in successfully"))
+	w.Write([]byte("User logged in successfully      " + token))
 }
 
 func (h *handler) UpdateUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {

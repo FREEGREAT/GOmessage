@@ -28,26 +28,21 @@ func NewCustomFile(data []byte) *CustomFile {
 
 func ByteToMultipart(data []byte, filename string) (*bytes.Buffer, error) {
 	var buf bytes.Buffer
-
 	writer := multipart.NewWriter(&buf)
-
 	part, err := writer.CreateFormFile("file", filename)
 
 	if err != nil {
-
 		return nil, err
-
 	}
 
 	_, err = part.Write(data)
 
 	if err != nil {
-
 		return nil, err
-
 	}
 
 	err = writer.Close()
+
 	if err != nil {
 		return nil, err
 	}

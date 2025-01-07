@@ -15,12 +15,15 @@ import (
 	client_minio "gomessage.com/media/pkg/minio"
 )
 
-var fileID string
-var empty_string = ""
+const (
+	empty_string = ""
+)
 
-var cfg = pkg.InitConfig()
-
-var bucket = viper.GetString("minio.bucket")
+var (
+	cfg    = pkg.InitConfig()
+	bucket = viper.GetString("minio.bucket")
+	fileID string
+)
 
 type mediaRepository struct {
 }

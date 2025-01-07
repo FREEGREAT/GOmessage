@@ -11,10 +11,10 @@ type DBconnection struct {
 
 var connection DBconnection
 
-func SetupDBConnection() (err error) {
+func SetupDBConnection() (session *gocql.Session, err error) {
 	connection.cluster = gocql.NewCluster("127.0.0.1:9042")
 	connection.cluster.Consistency = gocql.Quorum
 	connection.cluster.Keyspace = "messager"
 	connection.session, err = connection.cluster.CreateSession()
-	return err
+	return connection.session, err
 }

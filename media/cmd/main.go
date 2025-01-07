@@ -12,12 +12,13 @@ import (
 	"google.golang.org/grpc"
 )
 
-var err_cfg = pkg.InitConfig()
-
-var bucket_name = viper.GetString("minio.storage")
-
 func main() {
-	lis, err := net.Listen("tcp", ":50052")
+	logrus.Info("Init config")
+	if err_cfg := pkg.InitConfig(); err_cfg != nil {
+		logrus.Errorf("Error while init config. %v", err_cfg)
+	}
+
+	lis, err := net.Listen("tcp", ":9023")
 	if err != nil {
 		logrus.Fatalf("failed to listen: %v", err)
 	}
@@ -27,11 +28,11 @@ func main() {
 	mediaService := service.NewMediaService(minioRepo)
 
 	proto_media_service.RegisterMediaServiceServer(grpcServer, mediaService)
-
+	logrus.Info(viper.GetString("minio.endpoint"))
+	logrus.Info(viper.GetString("minio.storage"))
+	logrus.Info("ServeGRPC")
 	if err := grpcServer.Serve(lis); err != nil {
 		logrus.Fatalf("failed to serve: %v", err)
 	}
-	logrus.Info(viper.GetString("minio.endpoint"))
-	logrus.Info(bucket_name)
 
 }

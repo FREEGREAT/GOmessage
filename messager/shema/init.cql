@@ -40,13 +40,3 @@ CREATE TABLE IF NOT EXISTS chats (
     user_id2 TEXT,
     action TEXT
 );
-
--- Таблиця для зберігання повідомлень чату
-CREATE TABLE IF NOT EXISTS chat_messages (
-    chat_id TEXT,
-    message_id TEXT,
-    sender_id TEXT,
-    message_text TEXT,
-    sent_at TIMESTAMP,
-    PRIMARY KEY (chat_id, message_id)
-);
