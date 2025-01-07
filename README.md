@@ -58,7 +58,7 @@ cd GOmesssage
 
 ### User Service
 ```yaml
-# /user/config/config.yml
+# /user/configs/config.yml
 postgre:
   host: "localhost"
   port: "5430"
@@ -77,7 +77,7 @@ kafka:
 
 ### Message Service
 ```yaml
-# /message/config/config.yml
+# /message/configs/config.yml
 jwt:
   secret: "super-duper-secret"
 
@@ -91,7 +91,7 @@ ws:
 
 ### Media Service
 ```yaml
-# /media/config/config.yml
+# /media/configs/config.yml
 minio:
   storage: "media-storage"
   endpoint: "localhost:9020"
@@ -102,7 +102,7 @@ minio:
 
 ### Gateway Service
 ```yaml
-# /gateway/config/config.yml
+# /gateway/configs/config.yml
 grpc:
   user_service: "localhost:9022"
   media_service: "localhost:9023"
