@@ -21,7 +21,7 @@ graph TD
     Client[Client] --> Gateway[Gateway Service]
     Gateway --> |gRPC| UserService[User Service]
     Gateway --> |gRPC| MediaService[Media Service]
-    Gateway --> |WebSocket| MessageService[Message Service]
+    MessageService --> |WebSocket| Client[Client]
     UserService --> PostgreSQL[(PostgreSQL)]
     MediaService --> MinIO[(MinIO)]
     MessageService --> Cassandra[(Cassandra)]
