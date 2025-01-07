@@ -42,15 +42,18 @@ graph TD
 1. Clone the repository:
 ```bash
 git clone https://github.com/yourusername/gomessager.git
-make docker-up
+cd GOmesssage
 ```
 
 2. Set up environment configs (see Configuration section)
 3. Run services:
 ```bash
-docker-compose up -d
+ make docker-up
 ```
-
+4. Stop services:
+```bash
+ make docker-down
+```
 ## ⚙️ Configuration
 
 ### User Service
