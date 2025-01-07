@@ -42,7 +42,7 @@ graph TD
 1. Clone the repository:
 ```bash
 git clone https://github.com/yourusername/gomessager.git
-cd gomessager
+make docker-up
 ```
 
 2. Set up environment configs (see Configuration section)
