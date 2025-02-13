@@ -111,9 +111,17 @@ func (u *userService) RegisterUser(ctx context.Context, in *proto_user_service.R
 		logrus.Errorf("Error creating user: %w", err)
 		return nil, err
 	}
+	analytic := models.Analytics{
+		ID:     id,
+		Source: in.Device,
+		Region: in.Location,
+	}
 	req := proto_user_service.RegisterUserResponse{
 		UserId: id,
 		Status: "Success",
+	}
+	if err := u.kProducer.ProduceAnalytic(analytic, viper.GetString("kafka.topic-analytics")); err != nil {
+		logrus.Error(err)
 	}
 
 	return &req, nil

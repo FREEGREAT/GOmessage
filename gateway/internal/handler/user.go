@@ -4,12 +4,18 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"io/ioutil"
+	"net"
 	"net/http"
 	"strconv"
+	"strings"
 
 	proto_media_service "github.com/FREEGREAT/protos/gen/go/media"
 	"github.com/google/uuid"
+	"github.com/mssola/user_agent"
+	"github.com/oschwald/geoip2-golang"
 	"github.com/sirupsen/logrus"
 
 	proto_user_service "github.com/FREEGREAT/protos/gen/go/user"
@@ -18,6 +24,21 @@ import (
 	"gomessage.com/gateway/internal/models"
 	"gomessage.com/gateway/internal/service"
 )
+
+type IPLocation struct {
+	Status      string  `json:"status"`
+	Country     string  `json:"country"`
+	CountryCode string  `json:"countryCode"`
+	Region      string  `json:"region"`
+	RegionName  string  `json:"regionName"`
+	City        string  `json:"city"`
+	Zip         string  `json:"zip"`
+	Lat         float64 `json:"lat"`
+	Lon         float64 `json:"lon"`
+	Timezone    string  `json:"timezone"`
+	ISP         string  `json:"isp"`
+	Query       string  `json:"query"`
+}
 
 const (
 	nonePhoto       = "NULL"
@@ -105,71 +126,190 @@ func (h *handler) ListOfFriends(w http.ResponseWriter, r *http.Request, _ httpro
 
 }
 
-func (h *handler) CreateUser(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
+func (h handler) CreateUser(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
 	defer r.Body.Close()
 
-	var user models.UserModel
+	deviceInfo := getDeviceInfo(r.UserAgent())
 
-	r.ParseMultipartForm(10 << 20) // 10 MB
-	userPart := r.FormValue("user")
-	logrus.Infof("Received user part: %s", userPart)
-	if err := json.Unmarshal([]byte(userPart), &user); err != nil {
+	locationInfo, err := getLocationInfo(r)
+	if err != nil {
+		logrus.Errorf("Failed to get location info: %v", err)
+		http.Error(w, "Failed to process location data", http.StatusInternalServerError)
+		return
+	}
+
+	user, err := parseUserData(r)
+	if err != nil {
+		logrus.Errorf("Failed to parse user data: %v", err)
 		http.Error(w, "Invalid user data: "+err.Error(), http.StatusBadRequest)
 		return
 	}
 
+	userId, err := registerUser(r.Context(), h, user, locationInfo, deviceInfo)
+	if err != nil {
+		logrus.Errorf("Failed to register user: %v", err)
+		http.Error(w, "Failed to register user: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	photoUrl, err := handleUserPhoto(r, h, userId)
+	if err != nil {
+		logrus.Errorf("Failed to handle user photo: %v", err)
+	}
+
+	response := map[string]interface{}{
+		"status": "success",
+		"user": map[string]interface{}{
+			"id":       userId,
+			"photoUrl": photoUrl,
+		},
+		"device":   deviceInfo,
+		"location": locationInfo,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(response)
+}
+
+func getDeviceInfo(userAgent string) map[string]string {
+	ua := user_agent.New(userAgent)
+	browser, version := ua.Browser()
+
+	deviceType := "desktop"
+	if ua.Mobile() {
+		deviceType = "mobile"
+	}
+
+	return map[string]string{
+		"browser":    browser,
+		"version":    version,
+		"os":         ua.OSInfo().Name,
+		"deviceType": deviceType,
+	}
+}
+
+func getLocationInfo(r *http.Request) (map[string]string, error) {
+	ip := getIP(r)
+	logrus.Infof("IP address: %s", ip)
+
+	if ip == "127.0.0.1" || strings.HasPrefix(ip, "192.168.") {
+		return map[string]string{
+			"country": "Local",
+			"city":    "Local",
+			"region":  "Local",
+		}, nil
+	}
+
+	db, err := geoip2.Open("db/GeoLite2-City.mmdb")
+	if err != nil {
+		logrus.Errorf("Failed to open GeoIP database: %v", err)
+		return nil, fmt.Errorf("failed to open GeoIP database: %v", err)
+	}
+	defer db.Close()
+
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		logrus.Errorf("Invalid IP address: %s", ip)
+		return nil, fmt.Errorf("invalid IP address: %s", ip)
+	}
+
+	record, err := db.City(parsedIP)
+	if err != nil {
+		logrus.Errorf("Failed to get city info: %v", err)
+		return nil, fmt.Errorf("failed to get city info: %v", err)
+	}
+
+	return map[string]string{
+		"country": record.Country.Names["en"],
+		"city":    record.City.Names["en"],
+	}, nil
+}
+
+func getIP(r *http.Request) string {
+	ip := r.Header.Get("X-Real-IP")
+	if ip == "" {
+		ip = r.Header.Get("X-Forwarded-For")
+	}
+	if ip == "" {
+		ip = r.RemoteAddr
+	}
+	return ip
+}
+
+func parseUserData(r *http.Request) (*models.UserModel, error) {
+	if err := r.ParseMultipartForm(10 << 20); err != nil {
+		return nil, fmt.Errorf("failed to parse form: %v", err)
+	}
+
+	userPart := r.FormValue("user")
+	if userPart == "" {
+		return nil, fmt.Errorf("user data is empty")
+	}
+
+	var user models.UserModel
+	if err := json.Unmarshal([]byte(userPart), &user); err != nil {
+		return nil, fmt.Errorf("invalid user data: %v", err)
+	}
+
+	return &user, nil
+}
+
+func registerUser(ctx context.Context, h handler, user *models.UserModel, location map[string]string, device map[string]string) (string, error) {
 	grpcRequest := &proto_user_service.RegisterUserRequest{
 		Nickname: user.Nickname,
 		Password: user.PasswordHash,
 		Email:    user.Email,
 		Age:      int32(*user.Age),
 		ImageUrl: nonePhoto,
+		Location: location["country"],
+		Device:   device["deviceType"],
 	}
-	logrus.Info("Register user without photo")
-	response, err := h.UserGrpcClient.RegisterUser(r.Context(), grpcRequest)
+
+	response, err := h.UserGrpcClient.RegisterUser(ctx, grpcRequest)
 	if err != nil {
-		http.Error(w, "Failed to register user: "+err.Error(), http.StatusInternalServerError)
-		return
+		return "", err
 	}
 
-	logrus.Info("Check response status")
-	if response.Status == SuccessResponse {
-		file, _, err := r.FormFile("photo")
-		if err != nil {
-			if err == http.ErrMissingFile {
-				logrus.Info("No photo uploaded, proceeding without it.")
-			} else {
-				http.Error(w, "Failed to read photo: "+err.Error(), http.StatusBadRequest)
-				return
-			}
-		} else {
-			defer file.Close()
-			photoBytes, err := io.ReadAll(file)
-			if err != nil {
-				http.Error(w, "Failed to read photo: "+err.Error(), http.StatusInternalServerError)
-				return
-			}
-			savePhotoReq := proto_media_service.SavePhotoRequest{Photo: photoBytes}
-			res, err := h.MediaGrpcClient.SavePhoto(context.Background(), &savePhotoReq)
-			if err != nil {
-				logrus.Errorf("Error while sending photo to MediaClient: %v", err)
-				return
-			}
-			logrus.Info(res.PhotoLink)
+	if response.Status != SuccessResponse {
+		return "", fmt.Errorf("registration failed with status: %s", response.Status)
+	}
 
-			grpcUpdateRequest := &proto_user_service.UpdateUserRequest{
-				Id:       &response.UserId,
-				ImageUrl: &res.PhotoLink,
-			}
-			_, err = h.UserGrpcClient.UpdateUser(context.Background(), grpcUpdateRequest)
-			if err != nil {
-				logrus.Errorf("Error while saving photo link: %v", err)
-				return
-			}
+	return response.UserId, nil
+}
+
+func handleUserPhoto(r *http.Request, h handler, userId string) (string, error) {
+	file, _, err := r.FormFile("photo")
+	if err != nil {
+		if err == http.ErrMissingFile {
+			return nonePhoto, nil
 		}
+		return "", err
 	}
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(response.UserId))
+	defer file.Close()
+
+	photoBytes, err := io.ReadAll(file)
+	if err != nil {
+		return "", err
+	}
+
+	savePhotoReq := &proto_media_service.SavePhotoRequest{Photo: photoBytes}
+	res, err := h.MediaGrpcClient.SavePhoto(context.Background(), savePhotoReq)
+	if err != nil {
+		return "", err
+	}
+
+	updateReq := &proto_user_service.UpdateUserRequest{
+		Id:       &userId,
+		ImageUrl: &res.PhotoLink,
+	}
+
+	_, err = h.UserGrpcClient.UpdateUser(context.Background(), updateReq)
+	if err != nil {
+		return "", err
+	}
+
+	return res.PhotoLink, nil
 }
 
 func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request, _ httprouter.Params) {
@@ -209,7 +349,7 @@ func (h *handler) LoginUser(w http.ResponseWriter, r *http.Request, _ httprouter
 }
 
 func (h *handler) UpdateUser(w http.ResponseWriter, r *http.Request, params httprouter.Params) {
-	defer r.Body.Close() // Закриваємо тіло запиту
+	defer r.Body.Close()
 
 	_, err := uuid.Parse(params.ByName("uuid"))
 	if err != nil {
@@ -335,4 +475,26 @@ func (h *handler) DeleteFriend(w http.ResponseWriter, r *http.Request, params ht
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("You you are not friends anymore"))
 
+}
+
+func getLocation(ip string) (*IPLocation, error) {
+	url := fmt.Sprintf("http://ip-api.com/json/%s", ip)
+
+	resp, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var location IPLocation
+	if err := json.Unmarshal(body, &location); err != nil {
+		return nil, err
+	}
+
+	return &location, nil
 }

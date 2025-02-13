@@ -26,7 +26,6 @@ func main() {
 	if err := utils.InitConfig(); err != nil {
 		logrus.Fatalf("error init config: %s", err.Error())
 	}
-	// Створення клієнта для PostgreSQL
 	logrus.Info("Connecting to database")
 	postgresqlClient, err := postgresql.NewClient(context.TODO(), viper.GetInt("postgre.connectAttempt"), postgresql.StorageConfig{
 		Host:     viper.GetString("postgre.host"),

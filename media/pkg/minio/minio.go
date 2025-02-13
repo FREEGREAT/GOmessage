@@ -12,15 +12,12 @@ import (
 	"gomessage.com/media/pkg"
 )
 
-var err_cfg = pkg.InitConfig()
-var storage = viper.GetString("minio.bucket")
-
 func CreateConncet() *minio.Client {
-	if err_cfg != nil {
+	if err_cfg := pkg.InitConfig(); err_cfg != nil {
 		logrus.Fatalf("error init config: %s", err_cfg.Error())
 	}
 	useSSL := false
-
+	storage := viper.GetString("minio.bucket")
 	endpoint := strings.TrimSpace(viper.GetString("minio.endpoint"))
 	logrus.Infof("Connecting to MinIO at %s", endpoint)
 
@@ -51,6 +48,11 @@ func CreateConncet() *minio.Client {
 }
 
 func CreateBucket() {
+	if err_cfg := pkg.InitConfig(); err_cfg != nil {
+		logrus.Fatalf("error init config: %s", err_cfg.Error())
+	}
+	storage := viper.GetString("minio.bucket")
+
 	minioClient := CreateConncet()
 	bucketName := storage
 	err := minioClient.MakeBucket(context.Background(), storage, minio.MakeBucketOptions{})

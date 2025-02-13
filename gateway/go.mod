@@ -3,7 +3,7 @@ module gomessage.com/gateway
 go 1.23.4
 
 require (
-	github.com/FREEGREAT/protos v0.0.0-20250103193551-17ba181473f2
+	github.com/FREEGREAT/protos v0.0.0-20250213182810-2e4e7e7a3b4e
 	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/google/uuid v1.6.0
 	github.com/julienschmidt/httprouter v1.3.0
@@ -17,6 +17,9 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/mssola/user_agent v0.6.0 // indirect
+	github.com/oschwald/geoip2-golang v1.11.0 // indirect
+	github.com/oschwald/maxminddb-golang v1.13.0 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/sagikazarmark/locafero v0.4.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
