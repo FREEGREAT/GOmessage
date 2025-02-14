@@ -1,4 +1,4 @@
-# GOmessager(Toivo) 📱
+# GOmessager(Howdy!) 📱
 
 > Modern, scalable messaging platform built with Go and microservices architecture
 
