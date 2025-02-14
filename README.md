@@ -180,6 +180,7 @@ require (
     google.golang.org/grpc v1.69.2
 )
 ```
+And [PROTOS](https://github.com/FREEGREAT/protos)
 
 ## 🔒 API Security
 
@@ -190,26 +191,78 @@ require (
 
 ## 📝 API Documentation
 
-### User Operations
-```go
-type UserRepository interface {
-    Create(ctx context.Context, user *models.UserModel) (string, error)
-    FindAll(ctx context.Context) ([]models.UserModel, error)
-    FindOne(ctx context.Context, user *models.UserModel) (models.UserModel, error)
-    FindById(ctx context.Context, id string) (models.UserModel, error)
-    Update(ctx context.Context, user *models.UserModel) error
-    Delete(ctx context.Context, id string) (string, error)
-}
+### Users
+
+#### Get List of Users
+```
+GET /users
+```
+- Requires authentication
+- Returns a list of all users
+
+#### Get List of Friends
+```
+GET /friend
+```
+- Requires authentication
+- Returns the authenticated user's friend list
+
+#### Create New User
+```
+POST /signup
+```
+- Public endpoint
+- Creates a new user account
+
+#### User Login
+```
+POST /login
+```
+- Public endpoint
+- Authenticates user and returns JWT token
+
+#### Update User
+```
+PUT /user/:uuid
+```
+- Requires authentication
+- Updates user profile information
+- Parameters:
+  - `uuid`: User's unique identifier
+
+#### Delete User
+```
+DELETE /delete/:uuid
+```
+- Requires authentication
+- Deletes user account
+- Parameters:
+  - `uuid`: User's unique identifier
+
+### Friend Management
+
+#### Add Friend
+```
+POST /friend
+```
+- Requires authentication
+- Adds a new friend to user's friend list
+
+#### Delete Friend
+```
+DELETE /friend
+```
+- Requires authentication
+- Removes a friend from user's friend list
+
+## Authentication
+
+The API uses JWT (JSON Web Token) for authentication. Protected endpoints require a valid JWT token to be included in the request header:
+
+```
+Authorization: Bearer <your_jwt_token>
 ```
 
-### Friend Operations
-```go
-type FriendsRepository interface {
-    Create(ctx context.Context, friend *models.FriendListModel) (string, error)
-    FindAll(ctx context.Context, user_id string) ([]models.FriendListModel, error)
-    Delete(ctx context.Context, friends *models.FriendListModel) error
-}
-```
 ## 📄 License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
