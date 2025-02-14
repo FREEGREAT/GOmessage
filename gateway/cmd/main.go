@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	proto_geoip_service "github.com/FREEGREAT/protos/gen/go/geoip"
 	proto_media_service "github.com/FREEGREAT/protos/gen/go/media"
 	proto_user_service "github.com/FREEGREAT/protos/gen/go/user"
 	"github.com/julienschmidt/httprouter"
@@ -32,9 +33,15 @@ func main() {
 	if err != nil {
 		logrus.Errorf("Error while creating Media GRPC connect: %w", err)
 	}
+	geoip_conn, err := pkg.NewGRPCConn(viper.GetString("grpc.geoip_service"))
+	if err != nil {
+		logrus.Errorf("Error while creating Media GRPC connect: %w", err)
+	}
+
 	clientMediaService := proto_media_service.NewMediaServiceClient(media_conn)
 	clientUserService := proto_user_service.NewUserServiceClient(user_conn)
-	gatehand := handler.NewGatewayHandler(clientUserService, clientMediaService, jwtService)
+	clientGeoIpService := proto_geoip_service.NewGeoIpServiceClient(geoip_conn)
+	gatehand := handler.NewGatewayHandler(clientUserService, clientMediaService, clientGeoIpService, jwtService)
 	gatehand.Register(router)
 	start(router)
 }

@@ -3,7 +3,7 @@ module gomessage.com/gateway
 go 1.23.4
 
 require (
-	github.com/FREEGREAT/protos v0.0.0-20250213182810-2e4e7e7a3b4e
+	github.com/FREEGREAT/protos v0.0.0-20250214111517-3fc911d28ab6
 	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/google/uuid v1.6.0
 	github.com/julienschmidt/httprouter v1.3.0

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	media "github.com/FREEGREAT/protos/gen/go/media"
 	"github.com/sirupsen/logrus"
@@ -18,7 +19,7 @@ func NewMediaService(repo storage.MediaRepository) *MediaService {
 }
 
 func (s *MediaService) SavePhoto(ctx context.Context, req *media.SavePhotoRequest) (*media.SavePhotoResponse, error) {
-	name := "test_img_grpc.jpg"
+	name := "user_img_" + string(time.Now().Format(time.RFC3339)) + ".jpg"
 
 	url, err := s.repo.UploadImgFile(name, req.Photo, "image/jpg")
 	if err != nil {

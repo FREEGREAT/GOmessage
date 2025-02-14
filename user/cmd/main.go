@@ -53,7 +53,6 @@ func main() {
 	if err != nil {
 		logrus.Fatalf("failed to listen: %v", err)
 	}
-	logrus.Info("Work!")
 	if err := grpcServer.Serve(lis); err != nil {
 		logrus.Fatalf("failed to serve: %v", err)
 	}
